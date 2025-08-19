@@ -57,23 +57,13 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/user", userRoutes);
 
-// Global error handling
-app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err);
-  res.status(500).json({
-    message: "Internal server error",
-    error: err.message,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-  });
-});
-
 // 404 handler
 app.use("*", (req, res) => {
   console.log("❌ Route not found:", req.originalUrl);
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
