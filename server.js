@@ -14,43 +14,33 @@ connectDB();
 
 const app = express();
 
-// CORS Configuration - FIXED
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://amazon-five-alpha.vercel.app',  // Your actual frontend domain
-      'https://*.vercel.app' // Allow all Vercel apps during development
-    ];
-    
-    if (allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin.includes('*')) {
-        return origin.includes('vercel.app');
-      }
-      return origin === allowedOrigin;
-    })) {
-      return callback(null, true);
-    }
-    
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
-  optionsSuccessStatus: 200
-};
+// Simple CORS - Allow all origins for now
+app.use(
+  cors({
+    origin: true, // This allows all origins
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
+// Handle preflight
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", true);
+  res.sendStatus(200);
+});
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Add logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, req.body);
+  next();
+});
 
 // Health check
 app.get("/health", (req, res) => {
@@ -61,42 +51,31 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Add CORS headers manually as backup
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Credentials', true);
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-csrf-token');
-  
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/user", userRoutes);
 
-// Error handling
+// Global error handling
 app.use((err, req, res, next) => {
-  console.error("Server Error:", err);
+  console.error("❌ Server Error:", err);
   res.status(500).json({
     message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : "Something went wrong",
+    error: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });
 
+// 404 handler
 app.use("*", (req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  console.log("❌ Route not found:", req.originalUrl);
+  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`✅ Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
 
 export default app;
