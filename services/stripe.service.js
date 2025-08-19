@@ -1,22 +1,11 @@
 import Stripe from "stripe";
 import dotenv from "dotenv";
 
-// Make sure to load environment variables
 dotenv.config();
 
-console.log(
-  "🔍 Checking Stripe key:",
-  process.env.STRIPE_SECRET_KEY ? "Found" : "Not found"
+const stripe = new Stripe(
+  "sk_test_51RZ66CRuAn8xgsfsJXvjXFj3rmRC97GICtIUY6w5EAFInE0ccG1RpA0XKRxJl9krY4WydgqJSYvTPV1SIzEw57I900oAZoZulM"
 );
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error("❌ STRIPE_SECRET_KEY is not set in environment variables");
-  console.log("Current working directory:", process.cwd());
-  console.log("Looking for .env file...");
-  process.exit(1);
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const createPaymentIntent = async (amount, currency = "usd") => {
   try {
