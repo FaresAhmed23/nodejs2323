@@ -10,19 +10,45 @@ import wishlistRoutes from "./routes/wishlist.routes.js";
 import userRoutes from "./routes/user.routes.js";
 
 dotenv.config();
-connectDB();
 
 const app = express();
 
-// Simple CORS - Allow all origins for now
-app.use(
-  cors({
-    origin: true, // This allows all origins
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // List of allowed origins
+    const allowedOrigins = [
+      "https://amazon-five-alpha.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3001",
+    ];
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+app.use((err, req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  console.error("Server Error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+    error: process.env.NODE_ENV === "development" ? err : {},
+  });
+});
 
 // Handle preflight
 app.options("*", (req, res) => {
@@ -38,9 +64,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Add logging middleware
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+connectDB();
 
 // Health check
 app.get("/health", (req, res) => {
@@ -61,6 +89,14 @@ app.use("/api/user", userRoutes);
 app.use("*", (req, res) => {
   console.log("❌ Route not found:", req.originalUrl);
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
 });
 
 const PORT = 5000;
