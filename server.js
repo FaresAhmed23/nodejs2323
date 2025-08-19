@@ -26,8 +26,7 @@ const corsOptions = {
   origin: [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://your-frontend-domain.vercel.app", // Replace with your actual frontend domain
-    "https://your-frontend-domain.netlify.app", // If you're using Netlify
+    "https://amazon-five-alpha.vercel.app/",
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
