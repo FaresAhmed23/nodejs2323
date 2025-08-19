@@ -62,12 +62,6 @@ app.options("*", (req, res) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Add logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
 connectDB();
 
 // Health check
@@ -84,20 +78,6 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/user", userRoutes);
-
-// 404 handler
-app.use("*", (req, res) => {
-  console.log("❌ Route not found:", req.originalUrl);
-  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
-});
-
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(err.status || 500).json({
-    message: err.message || "Internal Server Error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-  });
-});
 
 const PORT = 5000;
 app.listen(PORT, () => {
