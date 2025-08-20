@@ -3,7 +3,7 @@ import Cart from "../models/cart.js";
 import {
   createFakePayment,
   confirmFakePayment,
-} from "../services/fake-payment.service.js";
+} from "../services/stripe.service.js";
 
 export const createCheckoutSession = async (req, res) => {
   try {
