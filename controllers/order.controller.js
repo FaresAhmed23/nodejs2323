@@ -1,9 +1,9 @@
 import Order from "../models/order.js";
 import Cart from "../models/cart.js";
 import {
-  createPaymentIntent,
-  confirmPayment,
-} from "../services/stripe.service.js";
+  createFakePayment,
+  confirmFakePayment,
+} from "../services/fake-payment.service.js";
 
 export const createCheckoutSession = async (req, res) => {
   try {
@@ -14,13 +14,13 @@ export const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Calculate totals (you'd fetch real product prices here)
+    // Calculate totals
     let itemsTotal = 0;
     const enrichedItems = [];
 
     for (let item of cart.items) {
-      // In production, you'd fetch actual product prices from your product service or FakeStore API
-      const productPrice = 29.99; // Placeholder - you'd get real prices
+      // Using a base price for demo - in production you'd fetch real prices
+      const productPrice = 29.99;
       const itemTotal = productPrice * item.quantity;
       itemsTotal += itemTotal;
 
@@ -40,23 +40,17 @@ export const createCheckoutSession = async (req, res) => {
         ? 19.99
         : 0;
 
-    // Calculate tax (8% for example)
+    // Calculate tax (8%)
     const taxRate = 0.08;
     const taxAmount = itemsTotal * taxRate;
-
     const totalAmount = itemsTotal + shippingCost + taxAmount;
 
-    // Create Stripe payment intent
-    const paymentIntent = await createPaymentIntent(totalAmount, "usd", {
-      userId: req.user._id.toString(),
-      cartId: cart._id.toString(),
-      itemCount: cart.items.length.toString(),
-    });
+    // Create fake payment intent
+    const fakePayment = await createFakePayment(totalAmount, "usd");
 
-    // Store checkout session data temporarily (you might want to use Redis or MongoDB)
     const checkoutSession = {
-      paymentIntentId: paymentIntent.id,
-      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: fakePayment.id,
+      clientSecret: `${fakePayment.id}_secret_fake`,
       user: req.user._id,
       items: enrichedItems,
       shippingAddress,
@@ -83,10 +77,10 @@ export const confirmOrder = async (req, res) => {
   try {
     const { paymentIntentId, shippingAddress, deliveryOption } = req.body;
 
-    // Verify payment with Stripe
-    const paymentIntent = await confirmPayment(paymentIntentId);
+    // Fake payment confirmation
+    const fakePayment = await confirmFakePayment(paymentIntentId);
 
-    if (paymentIntent.status !== "succeeded") {
+    if (fakePayment.status !== "succeeded") {
       return res.status(400).json({ message: "Payment not completed" });
     }
 
@@ -95,14 +89,30 @@ export const confirmOrder = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
+    // Calculate total price
+    let totalPrice = 0;
+    for (let item of cart.items) {
+      totalPrice += 29.99 * item.quantity; // Using base price for demo
+    }
+
+    // Add shipping cost
+    const shippingCost =
+      deliveryOption === "express"
+        ? 9.99
+        : deliveryOption === "same-day"
+        ? 19.99
+        : 0;
+    const tax = totalPrice * 0.08;
+    totalPrice = totalPrice + shippingCost + tax;
+
     // Create order
     const order = await Order.create({
       user: req.user._id,
       items: cart.items,
-      totalPrice: paymentIntent.amount / 100, // Convert from cents
+      totalPrice,
       shippingAddress,
       deliveryOption,
-      paymentIntentId,
+      paymentIntentId: fakePayment.id,
       status: "confirmed",
     });
 
@@ -121,10 +131,10 @@ export const confirmOrder = async (req, res) => {
   }
 };
 
+// Simplified checkout
 export const checkout = async (req, res) => {
-  // Keep existing simple checkout for backwards compatibility
   try {
-    const { shippingAddress, paymentMethod } = req.body;
+    const { shippingAddress, paymentMethod = "Credit Card" } = req.body;
 
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart || cart.items.length === 0) {
@@ -136,15 +146,25 @@ export const checkout = async (req, res) => {
       totalPrice += 29.99 * item.quantity;
     }
 
+    // Add tax
+    totalPrice = totalPrice + totalPrice * 0.08;
+
     const order = await Order.create({
       user: req.user._id,
       items: cart.items,
       totalPrice,
-      shippingAddress,
+      shippingAddress: shippingAddress || {
+        street: "123 Main St",
+        city: "Sample City",
+        state: "Sample State",
+        zipCode: "12345",
+        country: "Sample Country",
+      },
       paymentMethod,
-      status: "pending",
+      status: "confirmed",
     });
 
+    // Clear cart
     cart.items = [];
     await cart.save();
 
