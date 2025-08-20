@@ -71,7 +71,6 @@ export const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      // For security, don't reveal if email exists or not
       return res.status(200).json({
         success: true,
         message:
@@ -110,11 +109,6 @@ export const forgotPassword = async (req, res) => {
         userName: user.name,
         resetUrl: resetUrl,
       },
-      // For demo purposes (remove in production)
-      ...(process.env.NODE_ENV === "development" && {
-        resetUrl: resetUrl,
-        demoMessage: "Demo mode: Frontend will send email via EmailJS",
-      }),
     });
   } catch (error) {
     console.error("Forgot password error:", error);
