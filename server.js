@@ -51,13 +51,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const uploadsDir = path.join(__dirname, "uploads/avatars");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -72,6 +65,13 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/user", userRoutes);
+
+const uploadsDir = path.join(__dirname, "uploads/avatars");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
