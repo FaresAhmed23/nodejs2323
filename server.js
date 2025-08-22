@@ -9,17 +9,21 @@ import orderRoutes from "./routes/order.routes.js";
 import wishlistRoutes from "./routes/wishlist.routes.js";
 import userRoutes from "./routes/user.routes.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
 dotenv.config();
 
 const app = express();
 
-// Connect to database first
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 connectDB();
 
-// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin
     if (!origin) return callback(null, true);
 
     const allowedOrigins = [
@@ -28,7 +32,6 @@ const corsOptions = {
       "http://localhost:3001",
     ];
 
-    // Allow all origins for now to debug
     callback(null, true);
   },
   credentials: true,
@@ -40,15 +43,20 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logging middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
+
+const uploadsDir = path.join(__dirname, "uploads/avatars");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Health check
 app.get("/health", (req, res) => {
@@ -59,14 +67,12 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/user", userRoutes);
 
-// Don't listen in production (Vercel handles this)
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {

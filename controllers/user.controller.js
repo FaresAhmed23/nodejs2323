@@ -1,5 +1,7 @@
 import User from "../models/user.js";
 import bcrypt from "bcryptjs";
+import fs from "fs";
+import path from "path";
 
 export const getProfile = async (req, res) => {
   try {
@@ -63,6 +65,51 @@ export const changePassword = async (req, res) => {
     });
   } catch (err) {
     console.error("Error changing password:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.avatar && user.avatar.startsWith("/uploads/")) {
+      const oldFilePath = path.join(process.cwd(), "public", user.avatar);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    user.avatar = avatarUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Avatar uploaded successfully",
+      avatar: avatarUrl,
+      user: {
+        ...user.toObject(),
+        password: undefined,
+      },
+    });
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
+
+    if (req.file) {
+      const filePath = req.file.path;
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
